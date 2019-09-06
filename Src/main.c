@@ -55,24 +55,24 @@ DMA_HandleTypeDef hdma_dac2;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim6;
-TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
 uint32_t start = 0;
 uint32_t end = 0;
 
-uint32_t dac1 = 0;
-uint32_t dac2 = 0;
-#define DAT_SIZ 512
-#define BUF_SIZ 1024
-uint32_t adc1[BUF_SIZ] = {0, };
-uint32_t adc2[BUF_SIZ] = {0, };
-uint32_t adc3[BUF_SIZ] = {0, };
-uint32_t* p_adc1 = adc1;
-uint32_t* p_adc2 = adc2;
-uint32_t* p_adc3 = adc3;
+uint16_t dac1 = 0;
+uint16_t dac2 = 0;
+#define DAT_SIZ 256
+#define BUF_SIZ 512
+uint16_t adc1[BUF_SIZ] = {0, };
+uint16_t adc2[BUF_SIZ] = {0, };
+uint16_t adc3[BUF_SIZ] = {0, };
+uint16_t* p_adc1 = adc1;
+uint16_t* p_adc2 = adc2;
+uint16_t* p_adc3 = adc3;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -86,7 +86,6 @@ static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_ADC3_Init(void);
 static void MX_TIM2_Init(void);
-static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -95,41 +94,70 @@ static void MX_TIM7_Init(void);
 /* USER CODE BEGIN 0 */
 #define ITM_Port32(n) (*((volatile unsigned long *) (0xE0000000+4*n)))
 
+#if 0
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 	if (hadc->Instance == hadc1.Instance) {
-		ITM_Port32(31) = 111;
+//		ITM_Port32(31) = 111;
 	} else if (hadc->Instance == hadc2.Instance) {
-		ITM_Port32(31) = 222;
+//		ITM_Port32(31) = 222;
 	} else if (hadc->Instance == hadc3.Instance) {
-		static uint32_t stb = 0x55555555;
-		static uint32_t endb = 0xaaaaaaaa;
-		HAL_UART_Transmit(&huart3, (uint8_t*)&stb, 4, 1000);
-		HAL_UART_Transmit(&huart3, (uint8_t*)adc3, DAT_SIZ*4, 1000);
-		HAL_UART_Transmit(&huart3, (uint8_t*)&endb, 4, 1000);
+		ITM_Port32(31) = 555;
+		static uint32_t stb = 0x5555;
+		static uint32_t endb = 0xaaaa;
+//		HAL_UART_Transmit(&huart3, (uint8_t*)&stb, 2, 1000);
+//		HAL_UART_Transmit(&huart3, (uint8_t*)adc3, DAT_SIZ*2, 1000);
+//		HAL_UART_Transmit(&huart3, (uint8_t*)&endb, 2, 1000);
+
+		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)&stb, 2);
+		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)adc3, DAT_SIZ*2);
+		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)&endb, 2);
+		ITM_Port32(31) = 666;
 	} else {
 	}
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 	if (hadc->Instance == hadc1.Instance) {
-		ITM_Port32(31) = 1111;
+//		ITM_Port32(31) = 1111;
 	} else if (hadc->Instance == hadc2.Instance) {
-		ITM_Port32(31) = 2222;
+//		ITM_Port32(31) = 2222;
 	} else if (hadc->Instance == hadc3.Instance) {
-		static uint32_t stb = 0x55555555;
-		static uint32_t endb = 0xaaaaaaaa;
-		HAL_UART_Transmit(&huart3, (uint8_t*)&stb, 4, 1000);
-		HAL_UART_Transmit(&huart3, (uint8_t*)(adc3+DAT_SIZ), DAT_SIZ*4, 1000);
-		HAL_UART_Transmit(&huart3, (uint8_t*)&endb, 4, 1000);
+		ITM_Port32(31) = 5555;
+		static uint32_t stb = 0x5555;
+		static uint32_t endb = 0xaaaa;
+//		HAL_UART_Transmit(&huart3, (uint8_t*)&stb, 2, 1000);
+//		HAL_UART_Transmit(&huart3, (uint8_t*)(adc3+DAT_SIZ), DAT_SIZ*2, 1000);
+//		HAL_UART_Transmit(&huart3, (uint8_t*)&endb, 2, 1000);
+
+		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)&stb, 2);
+		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)(adc3+DAT_SIZ), DAT_SIZ*2);
+		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)&endb, 2);
+		ITM_Port32(31) = 6666;
 	} else {
 	}
 }
+#else
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+	if (hadc->Instance == hadc1.Instance) {
+//		ITM_Port32(31) = 1111;
+	} else if (hadc->Instance == hadc2.Instance) {
+//		ITM_Port32(31) = 2222;
+	} else if (hadc->Instance == hadc3.Instance) {
+		ITM_Port32(31) = 5555;
+		static uint32_t stb = 0x5555;
+		static uint32_t endb = 0xaaaa;
+		HAL_UART_Transmit(&huart3, (uint8_t*)&stb, 2, 1000);
+		HAL_UART_Transmit(&huart3, (uint8_t*)adc3, BUF_SIZ*2, 1000);
+		HAL_UART_Transmit(&huart3, (uint8_t*)&endb, 2, 1000);
+	} else {
+	}
+}
+#endif
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 	end = HAL_GetTick();
 	if (end-start > 1000) {
 		start = end;
-		ITM_Port32(31) = 555;
 	}
 }
 /* USER CODE END 0 */
@@ -171,7 +199,6 @@ int main(void)
   MX_ADC2_Init();
   MX_ADC3_Init();
   MX_TIM2_Init();
-  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -179,7 +206,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   start = HAL_GetTick();
-  HAL_TIM_Base_Start_IT(&htim7);
+//  HAL_TIM_Base_Start_IT(&htim7);
 
   HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, &dac1, 1, DAC_ALIGN_12B_R);
   HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_2, &dac2, 1, DAC_ALIGN_12B_R);
@@ -228,7 +255,7 @@ void SystemClock_Config(void)
   /** Configure the main internal regulator output voltage 
   */
   __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
   /** Initializes the CPU, AHB and APB busses clocks 
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
@@ -236,16 +263,10 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 216;
+  RCC_OscInitStruct.PLL.PLLN = 144;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 9;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Activate the Over-Drive mode 
-  */
-  if (HAL_PWREx_EnableOverDrive() != HAL_OK)
   {
     Error_Handler();
   }
@@ -258,7 +279,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
   {
     Error_Handler();
   }
@@ -290,7 +311,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
@@ -340,7 +361,7 @@ static void MX_ADC2_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
   */
   hadc2.Instance = ADC2;
-  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc2.Init.Resolution = ADC_RESOLUTION_12B;
   hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc2.Init.ContinuousConvMode = DISABLE;
@@ -390,7 +411,7 @@ static void MX_ADC3_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
   */
   hadc3.Instance = ADC3;
-  hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc3.Init.Resolution = ADC_RESOLUTION_12B;
   hadc3.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc3.Init.ContinuousConvMode = DISABLE;
@@ -484,7 +505,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 108-1;
+  htim2.Init.Prescaler = 72-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 1000000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -543,7 +564,7 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 1-1;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 500-1;
+  htim6.Init.Period = 300-1;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -558,44 +579,6 @@ static void MX_TIM6_Init(void)
   /* USER CODE BEGIN TIM6_Init 2 */
 
   /* USER CODE END TIM6_Init 2 */
-
-}
-
-/**
-  * @brief TIM7 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM7_Init(void)
-{
-
-  /* USER CODE BEGIN TIM7_Init 0 */
-
-  /* USER CODE END TIM7_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM7_Init 1 */
-
-  /* USER CODE END TIM7_Init 1 */
-  htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 108-1;
-  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 1000-1;
-  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM7_Init 2 */
-
-  /* USER CODE END TIM7_Init 2 */
 
 }
 
@@ -615,7 +598,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 2000000;
+  huart3.Init.BaudRate = 2200000;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
@@ -645,6 +628,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
   /* DMA1_Stream5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);

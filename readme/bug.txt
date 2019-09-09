@@ -1,0 +1,11 @@
+stm32f7 hal v1.15 : 버그
+
+1. scrach 에서 eth, lwip, freertos를 사용할 경우
+  가. lwip를 dhcp모드에서 코드를 생성한 뒤에 컴파일한 뒤에 static모드로 코드를 생성하고 사용할 것
+  나. 그렇지 않고 바로 static모드로 코드를 생성하고 사용할 경우 eth에 대한 인터럽트가 생성되지 않음
+  다. scrach에서 dhcp와 scrach에서 static를 비교해보면 확인할 수 있음
+  
+2. scrach가 아닌 코드에서 eth, lwip, freetos를 추가할 경우
+  가. 위와 동일하게 코드를 추가하면 eth에 대한 인터럽트는 생성됨
+  나. 하지만 ping이 안됨
+  다. eth에서 phy address를 1에서 0으로 변경해줘야함

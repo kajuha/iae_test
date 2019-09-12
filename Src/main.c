@@ -26,6 +26,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+
+#include "httpserver-netconn.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -770,6 +772,8 @@ void StartDefaultTask(void const * argument)
   MX_LWIP_Init();
 
   /* USER CODE BEGIN 5 */
+  http_server_netconn_init();
+  
   /* Infinite loop */
   for(;;)
   {

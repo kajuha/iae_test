@@ -72,7 +72,7 @@ void http_server_serve(struct netconn *conn)
       there are other formats for GET, and we're keeping it very simple )*/
       if ((buflen >=5) && (strncmp(buf, "GET /", 5) == 0))
       {
-    	  if (strncmp((char const *)buf,"GET /index.html",15)==0) {
+    	  if (strncmp((char const *)buf,"GET /index.html", 15) == 0) {
     		  netconn_write(conn, (const unsigned char*)index_html, index_html_len, NETCONN_NOCOPY);
     	  }
     	  if (strncmp((char const *)buf,"GET /led1", 9) == 0) {
@@ -91,7 +91,8 @@ void http_server_serve(struct netconn *conn)
     			  netconn_write(conn, (const unsigned char*)"OFF", 3, NETCONN_NOCOPY);
     	  }
     	  if (strncmp((char const *)buf,"GET /adc", 8) == 0) {
-    		  sprintf(buf, "%2.1f °C", getMCUTemperature());
+//    		  sprintf(buf, "%2.1f", getMCUTemperature());
+    		  sprintf(buf, "%2d", -999);
     		  netconn_write(conn, (const unsigned char*)buf, strlen(buf), NETCONN_NOCOPY);
     	  }
       }

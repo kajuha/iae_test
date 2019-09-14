@@ -101,72 +101,34 @@ void StartDefaultTask(void const * argument);
 /* USER CODE BEGIN 0 */
 #define ITM_Port32(n) (*((volatile unsigned long *) (0xE0000000+4*n)))
 
-#if 0
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 	if (hadc->Instance == hadc1.Instance) {
-//		ITM_Port32(31) = 111;
+		ITM_Port32(31) = 111;
 	} else if (hadc->Instance == hadc2.Instance) {
-//		ITM_Port32(31) = 222;
+		ITM_Port32(31) = 222;
 	} else if (hadc->Instance == hadc3.Instance) {
-		ITM_Port32(31) = 555;
-		static uint32_t stb = 0x5555;
-		static uint32_t endb = 0xaaaa;
-//		HAL_UART_Transmit(&huart3, (uint8_t*)&stb, 2, 1000);
-//		HAL_UART_Transmit(&huart3, (uint8_t*)adc3, DAT_SIZ*2, 1000);
-//		HAL_UART_Transmit(&huart3, (uint8_t*)&endb, 2, 1000);
-
-		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)&stb, 2);
-		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)adc3, DAT_SIZ*2);
-		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)&endb, 2);
-		ITM_Port32(31) = 666;
+		ITM_Port32(31) = 333;
 	} else {
 	}
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 	if (hadc->Instance == hadc1.Instance) {
-//		ITM_Port32(31) = 1111;
+		ITM_Port32(31) = 1111;
 	} else if (hadc->Instance == hadc2.Instance) {
-//		ITM_Port32(31) = 2222;
+		ITM_Port32(31) = 2222;
 	} else if (hadc->Instance == hadc3.Instance) {
-		ITM_Port32(31) = 5555;
-		static uint32_t stb = 0x5555;
-		static uint32_t endb = 0xaaaa;
-//		HAL_UART_Transmit(&huart3, (uint8_t*)&stb, 2, 1000);
-//		HAL_UART_Transmit(&huart3, (uint8_t*)(adc3+DAT_SIZ), DAT_SIZ*2, 1000);
-//		HAL_UART_Transmit(&huart3, (uint8_t*)&endb, 2, 1000);
-
-		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)&stb, 2);
-		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)(adc3+DAT_SIZ), DAT_SIZ*2);
-		HAL_UART_Transmit_DMA(&huart3, (uint8_t*)&endb, 2);
-		ITM_Port32(31) = 6666;
+		ITM_Port32(31) = 3333;
 	} else {
 	}
 }
-#else
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-	if (hadc->Instance == hadc1.Instance) {
-//		ITM_Port32(31) = 1111;
-	} else if (hadc->Instance == hadc2.Instance) {
-//		ITM_Port32(31) = 2222;
-	} else if (hadc->Instance == hadc3.Instance) {
-		ITM_Port32(31) = 5555;
-		static uint32_t stb = 0x5555;
-		static uint32_t endb = 0xaaaa;
-		HAL_UART_Transmit(&huart3, (uint8_t*)&stb, 2, 1000);
-		HAL_UART_Transmit(&huart3, (uint8_t*)adc3, BUF_SIZ*2, 1000);
-		HAL_UART_Transmit(&huart3, (uint8_t*)&endb, 2, 1000);
-	} else {
-	}
-}
-#endif
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
-	end = HAL_GetTick();
-	if (end-start > 1000) {
-		start = end;
-	}
-}
+//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
+//	end = HAL_GetTick();
+//	if (end-start > 1000) {
+//		start = end;
+//	}
+//}
 /* USER CODE END 0 */
 
 /**
@@ -179,6 +141,12 @@ int main(void)
 
   /* USER CODE END 1 */
   
+
+  /* Enable I-Cache---------------------------------------------------------*/
+  SCB_EnableICache();
+
+  /* Enable D-Cache---------------------------------------------------------*/
+  SCB_EnableDCache();
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -245,17 +213,17 @@ int main(void)
   start = HAL_GetTick();
 //  HAL_TIM_Base_Start_IT(&htim7);
 
-  HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, &dac1, 1, DAC_ALIGN_12B_R);
-  HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_2, &dac2, 1, DAC_ALIGN_12B_R);
+  HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*)&dac1, 1, DAC_ALIGN_12B_R);
+  HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_2, (uint32_t*)&dac2, 1, DAC_ALIGN_12B_R);
 
-  HAL_ADC_Start_DMA(&hadc1, adc1, BUF_SIZ);
-  HAL_ADC_Start_DMA(&hadc2, adc2, BUF_SIZ);
-  HAL_ADC_Start_DMA(&hadc3, adc3, BUF_SIZ);
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1, BUF_SIZ);
+  HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc2, BUF_SIZ);
+  HAL_ADC_Start_DMA(&hadc3, (uint32_t*)adc3, BUF_SIZ);
 
   // arr, duty = ccr / arr
   __HAL_TIM_SET_AUTORELOAD(&htim2, 100-1);
   // ccr, duty = ccr / arr
-  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 5);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 50);
   // cnt, ccr(max) = cnt(inc)
   __HAL_TIM_SET_COUNTER(&htim2, 0);
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
@@ -348,7 +316,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
@@ -398,7 +366,7 @@ static void MX_ADC2_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
   */
   hadc2.Instance = ADC2;
-  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc2.Init.Resolution = ADC_RESOLUTION_12B;
   hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc2.Init.ContinuousConvMode = DISABLE;
@@ -448,7 +416,7 @@ static void MX_ADC3_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
   */
   hadc3.Instance = ADC3;
-  hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc3.Init.Resolution = ADC_RESOLUTION_12B;
   hadc3.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc3.Init.ContinuousConvMode = DISABLE;
@@ -669,19 +637,19 @@ static void MX_DMA_Init(void)
   HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
   /* DMA1_Stream5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
   /* DMA1_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
   /* DMA2_Stream1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
   /* DMA2_Stream2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
 
 }
@@ -772,6 +740,26 @@ void StartDefaultTask(void const * argument)
   MX_LWIP_Init();
 
   /* USER CODE BEGIN 5 */
+#if 1
+  HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*)&dac1, 1, DAC_ALIGN_12B_R);
+  HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_2, (uint32_t*)&dac2, 1, DAC_ALIGN_12B_R);
+
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1, BUF_SIZ);
+  HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc2, BUF_SIZ);
+  HAL_ADC_Start_DMA(&hadc3, (uint32_t*)adc3, BUF_SIZ);
+
+  // arr, duty = ccr / arr
+  __HAL_TIM_SET_AUTORELOAD(&htim2, 100-1);
+  // ccr, duty = ccr / arr
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 50);
+  // cnt, ccr(max) = cnt(inc)
+  __HAL_TIM_SET_COUNTER(&htim2, 0);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+//  HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
+
+  HAL_TIM_Base_Start(&htim6);
+#endif
+
   http_server_netconn_init();
   
   /* Infinite loop */
@@ -780,6 +768,27 @@ void StartDefaultTask(void const * argument)
     osDelay(1);
   }
   /* USER CODE END 5 */ 
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM14 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM14) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
 }
 
 /**

@@ -33,7 +33,6 @@
 #include "httpserver-netconn.h"
 #include "cmsis_os.h"
 #include "../webpages/index.h"
-#include "temp.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -42,6 +41,7 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 u32_t nPageHits = 0;
+extern uint16_t* p_adc3;
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -91,8 +91,7 @@ void http_server_serve(struct netconn *conn)
     			  netconn_write(conn, (const unsigned char*)"OFF", 3, NETCONN_NOCOPY);
     	  }
     	  if (strncmp((char const *)buf,"GET /adc", 8) == 0) {
-//    		  sprintf(buf, "%2.1f", getMCUTemperature());
-    		  sprintf(buf, "%2d", -999);
+    		  sprintf(buf, "%d", p_adc3[0]);
     		  netconn_write(conn, (const unsigned char*)buf, strlen(buf), NETCONN_NOCOPY);
     	  }
       }

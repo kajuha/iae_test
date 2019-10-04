@@ -26,6 +26,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include "lwip/opt.h"
+#include "lwip/arch.h"
+#include "lwip/api.h"
 
 #include "httpserver-netconn.h"
 /* USER CODE END Includes */
@@ -64,20 +67,30 @@ UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_tx;
 
 osThreadId defaultTaskHandle;
+osThreadId tcpTaskHandle;
 /* USER CODE BEGIN PV */
 uint32_t start = 0;
 uint32_t end = 0;
 
 uint16_t dac1 = 0;
 uint16_t dac2 = 0;
-#define DAT_SIZ 256
-#define BUF_SIZ 512
+#define DAT_SIZ 1000
+#define BUF_SIZ 2000
 uint16_t adc1[BUF_SIZ] = {0, };
 uint16_t adc2[BUF_SIZ] = {0, };
 uint16_t adc3[BUF_SIZ] = {0, };
 uint16_t* p_adc1 = adc1;
 uint16_t* p_adc2 = adc2;
 uint16_t* p_adc3 = adc3;
+
+struct netconn *tcp_conn, *tcp_newconn;
+err_t tcp_recv_err;
+err_t tcp_tx_half_err;
+err_t tcp_tx_full_err;
+struct netbuf *tcp_inbuf;
+char* tcp_buf;
+u16_t tcp_buflen;
+uint32_t tcp_connected = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -92,6 +105,7 @@ static void MX_ADC2_Init(void);
 static void MX_ADC3_Init(void);
 static void MX_TIM2_Init(void);
 void StartDefaultTask(void const * argument);
+void StartTcpTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -108,6 +122,13 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 		ITM_Port32(31) = 222;
 	} else if (hadc->Instance == hadc3.Instance) {
 		ITM_Port32(31) = 333;
+		if (tcp_connected == 1) {
+			ITM_Port32(31) = 444;
+//			tcp_tx_half_err = netconn_write(tcp_conn, (const unsigned char*)adc3, DAT_SIZ, NETCONN_NOCOPY);
+			tcp_tx_half_err = netconn_write(tcp_conn, (const unsigned char*)adc3, 100, NETCONN_COPY);
+			ITM_Port32(31) = 555;
+		} else {
+		}
 	} else {
 	}
 }
@@ -119,16 +140,16 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 		ITM_Port32(31) = 2222;
 	} else if (hadc->Instance == hadc3.Instance) {
 		ITM_Port32(31) = 3333;
+		if (tcp_connected == 1) {
+//			ITM_Port32(31) = 4444;
+//			tcp_tx_full_err = netconn_write(tcp_conn, (const unsigned char*)(adc3+DAT_SIZ), DAT_SIZ, NETCONN_NOCOPY);
+//			ITM_Port32(31) = 5555;
+		} else {
+		}
 	} else {
 	}
 }
 
-//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
-//	end = HAL_GetTick();
-//	if (end-start > 1000) {
-//		start = end;
-//	}
-//}
 /* USER CODE END 0 */
 
 /**
@@ -196,8 +217,10 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+//  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  osThreadDef(tcpTask, StartTcpTask, osPriorityNormal, 0, 128);
+//  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  tcpTaskHandle = osThreadCreate(osThread(tcpTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -721,7 +744,78 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void StartTcpTask(void const * argument)
+{
+  err_t err, accept_err;
 
+#if 1
+  MX_LWIP_Init();
+
+  HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*)&dac1, 1, DAC_ALIGN_12B_R);
+  HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_2, (uint32_t*)&dac2, 1, DAC_ALIGN_12B_R);
+
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1, BUF_SIZ);
+  HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc2, BUF_SIZ);
+  HAL_ADC_Start_DMA(&hadc3, (uint32_t*)adc3, BUF_SIZ);
+
+  // arr, duty = ccr / arr
+  __HAL_TIM_SET_AUTORELOAD(&htim2, 100-1);
+  // ccr, duty = ccr / arr
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 50);
+  // cnt, ccr(max) = cnt(inc)
+  __HAL_TIM_SET_COUNTER(&htim2, 0);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+//  HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
+
+  HAL_TIM_Base_Start(&htim6);
+#endif
+
+  tcp_conn = netconn_new(NETCONN_TCP);
+
+  if (tcp_conn!= NULL)
+  {
+	err = netconn_bind(tcp_conn, NULL, 5555);
+
+	if (err == ERR_OK)
+	{
+	  netconn_listen(tcp_conn);
+
+	  while(1)
+	  {
+		accept_err = netconn_accept(tcp_conn, &tcp_newconn);
+
+		tcp_connected = 0;
+
+		  /* Infinite loop */
+		  for(;;)
+		  {
+//			  tcp_recv_err = netconn_recv(tcp_conn, &tcp_inbuf);
+//
+//			  if (tcp_recv_err == ERR_OK)
+//			  {
+//			  }
+		    osDelay(1);
+		  }
+
+		if(accept_err == ERR_OK)
+		{
+			struct netbuf *inbuf;
+			err_t recv_err;
+			char* buf;
+			u16_t buflen;
+
+//			recv_err = netconn_recv(conn, &inbuf);
+
+//			netconn_write(conn, (const unsigned char*)index_html, index_html_len, NETCONN_NOCOPY);
+
+//		  netconn_delete(newconn);
+//
+//		  netconn_close(conn);
+		}
+	  }
+	}
+  }
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
